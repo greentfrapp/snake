@@ -1,0 +1,108 @@
+<html>
+<head>
+  <script src="https://unpkg.com/vue@next"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+  .demo {
+    font-family: sans-serif;
+    border: 1px solid #eee;
+    border-radius: 2px;
+    padding: 20px 30px;
+    margin-top: 1em;
+    margin-bottom: 40px;
+    user-select: none;
+    overflow-x: auto;
+  }
+  </style>
+</head>
+<body>
+  <div id="main">
+    <svg id="svg" width="700" height="700" >
+      <g
+        v-for="(ob, i) in obs"
+        :transform="`translate(0 ${i*size})`">
+        <g
+          v-for="(val, j) in ob">
+        <rect
+          :width="size"
+          :height="size"
+          :style="{ fill: colors[Math.round(val)], strokeWidth: 3, stroke: 'white' }"
+          :x="j*size"/>
+        <circle
+          v-if="val == 1"
+          :r="Math.round(size/2)"
+          :style="{ fill: 'green', strokeWidth: 3, stroke: 'white' }"
+          :cx="j*size+Math.round(size/2)"
+          :cy="Math.round(size/2)"/>
+        </g>
+      </g>
+    </svg>
+    <div>
+      {{ reward }}
+    </div>
+  </div>
+  <script type="text/javascript">
+    const HelloVueApp = {
+      mounted() {
+        this.reset()
+        setInterval(this.step, 200)
+      },
+      data() {
+        return {
+          size: 30,
+          colors: [
+            'lightgrey',
+            'lightgrey',
+            'blue',
+            'lightblue',
+            'orange',
+            'yellow',
+          ],
+          done: false,
+          obs: [[0, 0, 0, 0, 0, 0,],
+                [3, 2, 0, 0, 0, 0,],
+                [0, 0, 0, 0, 1, 0,],
+                [0, 0, 0, 0, 0, 4,],
+                [0, 0, 0, 0, 0, 5,],
+                [0, 0, 0, 0, 0, 0,],],
+          reward: 0,
+        }
+      },
+      methods: {
+        step() {
+          if (this.done) {
+            this.reset()
+          } else {
+            axios.get('http://localhost:8000/step')
+              .then(response => {
+                console.log(response.data)
+                this.obs = response.data.obs
+                this.done = response.data.done
+                this.reward = response.data.total_reward
+              })
+              .catch(error => {
+                // handle error
+                console.log(error)
+              })
+          }
+        },
+        reset() {
+          axios.get('http://localhost:8000/load')
+            .then(response => {
+              console.log(response.data)
+              this.obs = response.data.obs
+              this.done = false
+              this.reward = 0
+            })
+            .catch(error => {
+              // handle error
+              console.log(error)
+            })
+        }
+      }
+    }
+
+    Vue.createApp(HelloVueApp).mount('#main')
+  </script>
+</body>
+</html>

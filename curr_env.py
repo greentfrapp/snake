@@ -21,10 +21,11 @@ class SnakeEnv(gym.Env):
     """Custom Environment that follows gym interface"""
     metadata = {'render.modes': ['human', 'console']}
 
-    def __init__(self, width=32, height=None):
+    def __init__(self, width=32, height=None, curriculum=None):
         super(SnakeEnv, self).__init__()
         self.width = width
         self.height = height or width
+        self.curriculum = curriculum or width
         
         self.action_space = spaces.Discrete(N_ACTIONS)
         self.observation_space = spaces.Box(low=0, high=255, shape=
@@ -34,6 +35,7 @@ class SnakeEnv(gym.Env):
         done = False
         reward = 0  # -0.1
         state = np.zeros((self.height, self.width, N_CHANNELS))
+        not_empty = np.zeros((self.height, self.width))
 
         if action == UP:
             change = np.array([-1, 0])
@@ -63,10 +65,15 @@ class SnakeEnv(gym.Env):
         state[head[0], head[1], 1] = 255  # Own head
         for px in self.own_pos:
             state[px[0], px[1], 2] = 255  # Own body inc. head
+            not_empty[px[0], px[1]] = 255
+        for i in range(self.curriculum, self.width):
+            for j in range(self.width):
+                not_empty[i, j] = 255
+                not_empty[j, i] = 255
 
         if np.array_equal(self.food_pos, head):
             reward = 10
-            empty_space = np.concatenate([np.expand_dims(d, 1) for d in (state[:, :, 2] == 0).nonzero()], axis=1)
+            empty_space = np.concatenate([np.expand_dims(d, 1) for d in (not_empty == 0).nonzero()], axis=1)
             if len(empty_space) == 0:
                 reward = 100
                 done = True
@@ -79,6 +86,7 @@ class SnakeEnv(gym.Env):
 
     def reset(self):
         state = np.zeros((self.height, self.width, N_CHANNELS))
+        not_empty = np.zeros((self.height, self.width))
         self.own_pos = np.array([
             [1, 0], # Head
             [0, 0],
@@ -86,7 +94,12 @@ class SnakeEnv(gym.Env):
         state[self.own_pos[0, 0], self.own_pos[0, 1], 1] = 255  # Own head
         for px in self.own_pos:
             state[px[0], px[1], 2] = 255  # Own body inc. head
-        empty_space = np.concatenate([np.expand_dims(d, 1) for d in (state[:, :, 2] == 0).nonzero()], axis=1)
+            not_empty[px[0], px[1]] = 255
+        for i in range(self.curriculum, self.width):
+            for j in range(self.width):
+                not_empty[i, j] = 255
+                not_empty[j, i] = 255
+        empty_space = np.concatenate([np.expand_dims(d, 1) for d in (not_empty == 0).nonzero()], axis=1)
         self.food_pos = empty_space[np.random.choice(len(empty_space))]
         state[self.food_pos[0], self.food_pos[1], 0] = 255  # Food
         return state
@@ -99,12 +112,16 @@ class SnakeEnv(gym.Env):
         render[head[0], head[1]] = 2
         for px in self.own_pos[1:]:
             render[px[0], px[1]] = 3
+        for i in range(self.curriculum, self.width):
+            for j in range(self.width):
+                render[i, j] = 9
+                render[j, i] = 9
         print(render)
         return render
 
 
 if __name__ == "__main__":
-    env = SnakeEnv(5)
+    env = SnakeEnv(6, curriculum=4)
     env.reset()
     done = False
     total_reward = 0
