@@ -1,0 +1,8 @@
+stable_baselines3
+gym
+torch
+numpy
+fastapi
+uvicorn
+matplotlib
+pandas
